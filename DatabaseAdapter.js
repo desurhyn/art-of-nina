@@ -17,14 +17,37 @@ export class DatabaseAdapter {
 
 const V = 'https://www.gstatic.com/firebasejs/10.12.2/';
 
+// Phones and .jfif files often report an empty or odd MIME type. Fix the label only; the bytes stay identical.
+function normalizeImage(file) {
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  const map = { jpg: 'image/jpeg', jpeg: 'image/jpeg', jfif: 'image/jpeg', jpe: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', avif: 'image/avif' };
+  const type = file.type && file.type.startsWith('image/') ? file.type : (map[ext] || 'image/jpeg');
+  return new File([file], file.name.replace(/\.jfif$/i, '.jpg').replace(/[^\w.-]/g, '_'), { type });
+}
+
+// Cloudinary unsigned upload with real progress (XHR). The returned secure_url is the untouched original.
+function uploadToCloudinary(file, cfg, onProgress) {
+  return new Promise((res, rej) => {
+    const xhr = new XMLHttpRequest(), fd = new FormData();
+    fd.append('file', file); fd.append('upload_preset', cfg.uploadPreset);
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${cfg.cloudName}/image/upload`);
+    xhr.upload.onprogress = e => { if (e.lengthComputable) { console.log(`[upload] ${e.loaded}/${e.total}`); onProgress?.(e.loaded / e.total); } };
+    xhr.onload = () => {
+      let j = {}; try { j = JSON.parse(xhr.responseText); } catch {}
+      xhr.status < 300 && j.secure_url ? res(j.secure_url) : rej(new Error(j.error?.message || `Upload failed (HTTP ${xhr.status})`));
+    };
+    xhr.onerror = () => rej(new Error('Network error. Check your connection and the Cloudinary cloud name.'));
+    xhr.send(fd);
+  });
+}
+
 class FirebaseAdapter extends DatabaseAdapter {
   async init(cfg) {
-    const [app, fs, au, stg] = await Promise.all([import(V + 'firebase-app.js'), import(V + 'firebase-firestore.js'), import(V + 'firebase-auth.js'), import(V + 'firebase-storage.js')]);
-    this.fs = fs; this.au = au; this.stg = stg;
-    const a = app.initializeApp(cfg);
+    const [app, fs, au] = await Promise.all([import(V + 'firebase-app.js'), import(V + 'firebase-firestore.js'), import(V + 'firebase-auth.js')]);
+    this.fs = fs; this.au = au;
+    const a = this.app = app.initializeApp(cfg);
     this.db = fs.getFirestore(a);
     this.auth = au.getAuth(a);
-    this.storage = stg.getStorage(a);
     await au.setPersistence(this.auth, au.browserSessionPersistence); // admin session ends with the tab
     return this;
   }
@@ -50,12 +73,27 @@ class FirebaseAdapter extends DatabaseAdapter {
   setLike(id, delta) { const f = this.fs; return f.setDoc(f.doc(this.db, 'likes', id), { count: f.increment(delta) }, { merge: true }); }
   addComment(c) { const f = this.fs; return f.addDoc(f.collection(this.db, 'comments'), { ...c, timestamp: f.serverTimestamp() }); }
   deleteComment(id) { const f = this.fs; return f.deleteDoc(f.doc(this.db, 'comments', id)); }
-  // Uploads the original file untouched (no resizing or compression) and resolves with its permanent public URL.
-  uploadImage(file, onProgress) {
-    const s = this.stg, r = s.ref(this.storage, `artworks/${Date.now()}-${file.name.replace(/[^\w.-]/g, '_')}`);
+  // Uploads the ORIGINAL bytes (no resizing or compression). Uses Cloudinary when configured, else Firebase Storage.
+  async uploadImage(file, onProgress) {
+    const f = normalizeImage(file);
+    console.log('[upload] start', f.name, f.type, f.size, 'bytes via', this.cloud ? 'Cloudinary' : 'Firebase Storage');
+    try {
+      const url = this.cloud ? await uploadToCloudinary(f, this.cloud, onProgress) : await this._uploadToFirebase(f, onProgress);
+      console.log('[upload] done', url);
+      return url;
+    } catch (e) { console.error('[upload] failed:', e.code || '', e.message || e); throw e; }
+  }
+  async _uploadToFirebase(file, onProgress) {
+    const s = this.stg ??= await import(V + 'firebase-storage.js');
+    const r = s.ref(this.storage ??= s.getStorage(this.app), `artworks/${Date.now()}-${file.name}`);
     return new Promise((res, rej) => {
-      const t = s.uploadBytesResumable(r, file, { contentType: file.type });
-      t.on('state_changed', x => onProgress?.(x.bytesTransferred / x.totalBytes), rej, async () => res(await s.getDownloadURL(t.snapshot.ref)));
+      const task = s.uploadBytesResumable(r, file, { contentType: file.type });
+      // If Storage isn't enabled (needs the Blaze plan) no event ever arrives: fail loudly instead of hanging at 0%.
+      const dog = setTimeout(() => { task.cancel(); rej(new Error('Upload never started. Firebase Storage is not enabled on the free plan. Set up Cloudinary in config.js instead.')); }, 20000);
+      task.on('state_changed',
+        x => { clearTimeout(dog); console.log(`[upload] ${x.state} ${x.bytesTransferred}/${x.totalBytes}`); onProgress?.(x.totalBytes ? x.bytesTransferred / x.totalBytes : 0); },
+        e => { clearTimeout(dog); rej(e); },
+        async () => { try { res(await s.getDownloadURL(task.snapshot.ref)); } catch (e) { rej(e); } });
     });
   }
   onAuthChange(cb) { return this.au.onAuthStateChanged(this.auth, u => cb(u && { uid: u.uid, email: u.email })); }
@@ -92,8 +130,12 @@ class MemoryAdapter extends DatabaseAdapter {
   async signOut() {}
 }
 
-export async function createAdapter(cfg) {
+export async function createAdapter(cfg, cloud) {
   if (!cfg.apiKey || cfg.apiKey.startsWith('YOUR_')) return new MemoryAdapter();
-  try { return await new FirebaseAdapter().init(cfg); }
+  try {
+    const a = await new FirebaseAdapter().init(cfg);
+    a.cloud = cloud?.cloudName && !cloud.cloudName.startsWith('YOUR_') ? cloud : null;
+    return a;
+  }
   catch (e) { console.error(e); return new MemoryAdapter(); }
 }
