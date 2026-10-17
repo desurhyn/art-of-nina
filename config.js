@@ -14,3 +14,4 @@ export const ADDONS = [
 export const PAYMENTS = ['GCash', 'Maya', 'BDO', 'BPI', 'UnionBank', 'PayPal'];
 export const ARTIST_EMAIL = 'nina@example.com';
 export const PAGE_SIZE = 12;
+export const CLOUDINARY = { cloudName: 'c8xg3hsh', uploadPreset: 'artworks' };
