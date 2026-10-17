@@ -15,5 +15,9 @@ export class GalleryService {
   }
   get visible() { return this.filtered.slice(0, this.page * this.size); }
   get hasMore() { return this.filtered.length > this.visible.length; }
-  get hero() { return this.all.find(a => a.featured) || this.all[0]; }
+  // Newest-featured wins: the most recently featured artwork is the hero, even if older ones still carry the flag.
+  get hero() {
+    const f = this.all.filter(a => a.featured).sort((a, b) => (b.featuredAt || b.createdAt) - (a.featuredAt || a.createdAt));
+    return f[0] || this.all[0];
+  }
 }

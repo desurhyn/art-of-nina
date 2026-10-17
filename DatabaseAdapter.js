@@ -57,7 +57,7 @@ class FirebaseAdapter extends DatabaseAdapter {
   _ms(t) { return t?.toMillis ? t.toMillis() : Date.now(); }
   subscribeArtworks(cb) {
     const { collection, query, orderBy } = this.fs;
-    return this._watch(query(collection(this.db, 'artworks'), orderBy('createdAt', 'desc')), l => l.map(a => ({ ...a, createdAt: this._ms(a.createdAt) })), cb);
+    return this._watch(query(collection(this.db, 'artworks'), orderBy('createdAt', 'desc')), l => l.map(a => ({ ...a, createdAt: this._ms(a.createdAt), featuredAt: a.featuredAt ? this._ms(a.featuredAt) : 0 })), cb);
   }
   subscribeLikes(cb) {
     return this._watch(this.fs.collection(this.db, 'likes'), l => Object.fromEntries(l.map(x => [x.id, x.count || 0])), cb);
@@ -67,8 +67,22 @@ class FirebaseAdapter extends DatabaseAdapter {
     return this._watch(query(collection(this.db, 'comments'), where('artwork_id', '==', id)),
       l => l.map(c => ({ ...c, timestamp: this._ms(c.timestamp) })).sort((a, b) => b.timestamp - a.timestamp), cb);
   }
-  addArtwork(a) { const f = this.fs; return f.addDoc(f.collection(this.db, 'artworks'), { ...a, createdAt: f.serverTimestamp() }); }
-  updateArtwork(id, a) { const f = this.fs; return f.updateDoc(f.doc(this.db, 'artworks', id), a); }
+  // Featuring an artwork stamps featuredAt and un-features every other artwork, so there is only ever one hero.
+  async addArtwork(a) {
+    const f = this.fs;
+    const ref = await f.addDoc(f.collection(this.db, 'artworks'), { ...a, createdAt: f.serverTimestamp(), ...(a.featured && { featuredAt: f.serverTimestamp() }) });
+    if (a.featured) await this._unfeatureOthers(ref.id);
+    return ref;
+  }
+  async updateArtwork(id, a) {
+    const f = this.fs;
+    await f.updateDoc(f.doc(this.db, 'artworks', id), { ...a, ...(a.featured && { featuredAt: f.serverTimestamp() }) });
+    if (a.featured) await this._unfeatureOthers(id);
+  }
+  async _unfeatureOthers(keepId) {
+    const f = this.fs, snap = await f.getDocs(f.query(f.collection(this.db, 'artworks'), f.where('featured', '==', true)));
+    await Promise.all(snap.docs.filter(d => d.id !== keepId).map(d => f.updateDoc(d.ref, { featured: false })));
+  }
   deleteArtwork(id) { const f = this.fs; return f.deleteDoc(f.doc(this.db, 'artworks', id)); }
   setLike(id, delta) { const f = this.fs; return f.setDoc(f.doc(this.db, 'likes', id), { count: f.increment(delta) }, { merge: true }); }
   addComment(c) { const f = this.fs; return f.addDoc(f.collection(this.db, 'comments'), { ...c, timestamp: f.serverTimestamp() }); }
@@ -118,8 +132,13 @@ class MemoryAdapter extends DatabaseAdapter {
   subscribeArtworks(cb) { return this._sub(() => [...this.art], cb); }
   subscribeLikes(cb) { return this._sub(() => ({ ...this.likes }), cb); }
   subscribeComments(id, cb) { return this._sub(() => this.comments.filter(c => c.artwork_id === id).sort((a, b) => b.timestamp - a.timestamp), cb); }
-  async addArtwork(a) { this.art.unshift({ ...a, id: 'm' + ++this.n, createdAt: Date.now() }); this._emit(); }
-  async updateArtwork(id, a) { this.art = this.art.map(x => x.id === id ? { ...x, ...a } : x); this._emit(); }
+  async addArtwork(a) {
+    if (a.featured) this.art = this.art.map(x => ({ ...x, featured: false }));
+    this.art.unshift({ ...a, id: 'm' + ++this.n, createdAt: Date.now(), featuredAt: a.featured ? Date.now() : 0 }); this._emit();
+  }
+  async updateArtwork(id, a) {
+    this.art = this.art.map(x => x.id === id ? { ...x, ...a, ...(a.featured && { featuredAt: Date.now() }) } : (a.featured ? { ...x, featured: false } : x)); this._emit();
+  }
   async deleteArtwork(id) { this.art = this.art.filter(x => x.id !== id); this._emit(); }
   async setLike(id, d) { this.likes[id] = Math.max(0, (this.likes[id] || 0) + d); this._emit(); }
   async addComment(c) { this.comments.push({ ...c, id: 'c' + ++this.n, timestamp: Date.now() }); this._emit(); }
