@@ -5,7 +5,7 @@ const RATIOS = ['1/1'];
 
 export class RenderEngine {
   constructor(cfg, h) {
-    this.cfg = cfg; this.h = h; this.zoom = 1;
+    this.cfg = cfg; this.h = h; this.zoom = 1; this.adminEmail = null;
     let t = 'dark'; try { t = localStorage.getItem('nina_theme') || 'dark'; } catch {}
     this.setTheme(t);
     this.build(); this.bind();
@@ -123,8 +123,10 @@ export class RenderEngine {
     const total = tier.price + adds.reduce((s, a) => s + a.price, 0);
     $('#total').textContent = php(total);
     this.summary = `Commission request for Art of Nina\nName: ${d.get('name') || '-'}\nEmail: ${d.get('email') || '-'}\nType: ${tier.name} (${php(tier.price)})\nAdd-ons: ${adds.map(a => `${a.name} (${php(a.price)})`).join(', ') || 'None'}\nEstimated total: ${php(total)}\nPayment: ${d.get('pay') || '-'}\nDetails: ${d.get('notes') || '-'}`;
-    $('#mailBtn').href = `mailto:${c.ARTIST_EMAIL}?subject=${encodeURIComponent('Commission request: ' + tier.name)}&body=${encodeURIComponent(this.summary)}`;
+    $('#mailBtn').href = `mailto:${this.adminEmail || c.ARTIST_EMAIL}?subject=${encodeURIComponent('Commission request: ' + tier.name)}&body=${encodeURIComponent(this.summary)}`;
   }
+  // Signed-in admin email wins; visitors fall back to ARTIST_EMAIL. Rebuilds the mailto link immediately.
+  setAdminEmail(email) { this.adminEmail = email || null; this.calc(); }
   async copySummary() {
     try { await navigator.clipboard.writeText(this.summary); this.toast('Summary copied.'); }
     catch { this.toast('Copy failed. Select the text manually or use Email brief.'); }

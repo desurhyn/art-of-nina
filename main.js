@@ -56,6 +56,6 @@ const ui = new RenderEngine(C, {
   copy: () => ui.copySummary()
 });
 
-auth.onChange(u => { ui.renderAuth(u); if (openId) ui.renderComments(commentsCache, auth.isAdmin); });
+auth.onChange(u => { ui.renderAuth(u); ui.setAdminEmail(u?.email); if (openId) ui.renderComments(commentsCache, auth.isAdmin); });
 db.subscribeArtworks(list => { gallery.setArtworks(list); ui.renderHero(gallery.hero); ui.renderAdminList(list); refresh(); });
 db.subscribeLikes(l => { gallery.setLikes(l); ui.updateLikes(l, liked); if (gallery.sort === 'liked') refresh(); });
