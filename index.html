@@ -41,14 +41,15 @@ input,select,textarea{background:var(--bg);color:var(--ink);border:1px solid var
 dialog{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:0;max-width:96vw;max-height:94vh;width:min(1200px,96vw)}
 dialog::backdrop{background:rgba(0,0,0,.8)}
 #adminDlg{width:min(560px,96vw);padding:1.25rem}#adminDlg form{display:grid;gap:.6rem}
-.lb{display:grid;grid-template-columns:1fr;max-height:94vh;overflow:auto}@media(min-width:900px){.lb{grid-template-columns:1fr 360px;height:90vh;overflow:hidden}}
-.lb-stage{background:#000;display:flex;align-items:center;justify-content:center;overflow:auto;min-height:50vh}
-.lb-stage img{width:100%;max-height:100%;object-fit:contain;transition:width .15s;image-rendering:-webkit-optimize-contrast;image-rendering:auto}
+.lb{display:grid;grid-template-columns:1fr;max-height:94vh;overflow:auto}@media(min-width:900px){.lb{grid-template-columns:1fr 360px;height:auto;max-height:94vh;overflow:hidden}.lb-side{max-height:94vh}}
+.lb-stage{background:transparent;display:flex;overflow:auto;min-height:0}
+.lb-stage img{width:100%;height:auto;max-height:70vh;margin:auto;object-fit:contain;transition:width .15s;image-rendering:-webkit-optimize-contrast;image-rendering:auto}
 .lb-side{padding:1rem;overflow:auto}.cmt{border:1px solid var(--line);border-radius:10px;padding:.6rem .8rem;background:var(--panel);overflow-wrap:anywhere}
 #toast{position:fixed;left:50%;bottom:1rem;transform:translate(-50%,150%);background:var(--ink);color:var(--bg);padding:.8rem 1.2rem;border-radius:10px;z-index:99;transition:transform .25s}#toast.show{transform:translate(-50%,0)}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 .only-md{display:none}.mnav>*{flex-shrink:0;white-space:nowrap}
 @media(min-width:768px){.only-md{display:inline-flex}}
+@media(max-width:640px){.panel-art{aspect-ratio:4/3;max-height:none}.panel-art img{object-position:center 20%}}
 </style>
 </head>
 <body>
@@ -106,7 +107,7 @@ dialog::backdrop{background:rgba(0,0,0,.8)}
   <div>
     <h2 class="text-3xl font-bold mb-3">About Me</h2>
     <p>I'm Janina, but I go by Nina online. I draw anime illustrations and manhwa-style pages, and I love expressive characters, soft lighting and cinematic panel framing.</p>
-    <p class="mt-3">Every piece starts as a rough thumbnail sketch. From there I move on to clean line work, then color, shading and a final polish. <span class="mute"></span></p>
+    <p class="mt-3">Every piece starts as a rough thumbnail sketch. From there I move on to clean line work, then color, shading and a final polish. <span class="mute">(Edit this bio in index.html to add my own story.)</span></p>
   </div>
   <div class="panel"><h3 class="text-xl font-bold mb-3">How I Create</h3>
     <p class="mb-3">I create my artwork using ibisPaint X on my smartphone / mobile phone.</p>

@@ -89,7 +89,7 @@ export class RenderEngine {
     img.complete && img.naturalWidth ? dims() : img.addEventListener('load', dims);
     const dlg = $('#lightbox'); if (!dlg.open) dlg.showModal();
   }
-  setZoom(z) { this.zoom = Math.min(4, Math.max(0.5, z)); const i = $('#lbImg'); if (!i) return; i.style.width = this.zoom * 100 + '%'; i.style.maxHeight = this.zoom === 1 ? '100%' : 'none'; }
+  setZoom(z) { this.zoom = Math.min(4, Math.max(0.5, z)); const i = $('#lbImg'); if (!i) return; i.style.width = this.zoom * 100 + '%'; i.style.maxHeight = this.zoom === 1 ? '' : 'none'; }
 
   renderComments(list, isAdmin = false) {
     const ul = $('#cList'); if (!ul) return;
