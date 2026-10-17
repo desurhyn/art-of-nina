@@ -42,8 +42,8 @@ dialog{background:var(--bg);color:var(--ink);border:1px solid var(--line);border
 dialog::backdrop{background:rgba(0,0,0,.8)}
 #adminDlg{width:min(560px,96vw);padding:1.25rem}#adminDlg form{display:grid;gap:.6rem}
 .lb{display:grid;grid-template-columns:1fr;max-height:94vh;overflow:auto}@media(min-width:900px){.lb{grid-template-columns:1fr 360px;height:auto;max-height:94vh;overflow:hidden}.lb-side{max-height:94vh}}
-.lb-stage{background:transparent !important;display:flex;overflow:auto;min-height:0}
-.lb-stage img{width:100%;height:auto;max-height:75vh;margin:auto;object-fit:contain;transition:width .15s;image-rendering:-webkit-optimize-contrast;image-rendering:auto}
+.lb-stage{position:relative;isolation:isolate;background:rgba(0,0,0,.4);display:flex;overflow:auto;min-height:0}
+.lb-stage img{width:100%;height:auto;max-height:80vh;margin:auto;object-fit:contain;transition:width .15s;image-rendering:-webkit-optimize-contrast;image-rendering:auto}
 .lb-side{padding:1rem;overflow:auto}.cmt{border:1px solid var(--line);border-radius:10px;padding:.6rem .8rem;background:var(--panel);overflow-wrap:anywhere}
 #toast{position:fixed;left:50%;bottom:1rem;transform:translate(-50%,150%);background:var(--ink);color:var(--bg);padding:.8rem 1.2rem;border-radius:10px;z-index:99;transition:transform .25s}#toast.show{transform:translate(-50%,0)}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -51,6 +51,14 @@ dialog::backdrop{background:rgba(0,0,0,.8)}
 @media(min-width:768px){.only-md{display:inline-flex}}
 @media(max-width:640px){.panel-art{aspect-ratio:4/3;max-height:none}.panel-art img{object-position:center 20%}}
 @media(min-width:768px){.panel-art{aspect-ratio:16/9;max-height:520px}.panel-art img{object-position:center center}}
+/* Ambient backdrop: a blurred copy of the same image fills any empty space (same URL, no extra download, no resizing) */
+.lb-stage img.lb-bg{position:absolute;inset:0;width:100%;height:100%;max-height:none;margin:0;object-fit:cover;filter:blur(24px) brightness(.55);z-index:-1;pointer-events:none}
+.panel-art-bg{display:none}.panel-art-overlay{z-index:2}
+@media(min-width:1024px){
+.panel-art{aspect-ratio:auto;height:480px;max-height:none}
+.panel-art img.panel-art-bg{display:block;position:absolute;inset:0;object-fit:cover;filter:blur(28px) brightness(.6);transform:scale(1.15)}
+.panel-art img:not(.panel-art-bg){position:relative;z-index:1;object-fit:contain;object-position:center 25%}
+}
 </style>
 </head>
 <body>
