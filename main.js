@@ -4,7 +4,7 @@ import { AuthService } from './AuthService.js';
 import { GalleryService } from './GalleryService.js';
 import { RenderEngine } from './RenderEngine.js';
 
-const db = await createAdapter(C.FIREBASE_CONFIG);
+const db = await createAdapter(C.FIREBASE_CONFIG, C.CLOUDINARY);
 const auth = new AuthService(db);
 const gallery = new GalleryService(C.PAGE_SIZE);
 let liked = new Set(), openId = null, unsubC = null, commentsCache = [];
