@@ -50,7 +50,7 @@ export class RenderEngine {
   }
 
   renderHero(a) {
-    $('#hero').innerHTML = a ? `<button data-act="open" data-id="${a.id}" class="panel-art" aria-label="View ${esc(a.title)}"><img class="panel-art-bg" src="${esc(a.imageUrl)}" alt="" aria-hidden="true"><img src="${esc(a.imageUrl)}" alt="${esc(a.title)}" fetchpriority="high"><span class="panel-art-overlay"><span class="panel-art-badge">Featured work</span><span class="panel-art-title">${esc(a.title)}</span></span></button>` : '';
+    $('#hero').innerHTML = a ? `<button data-act="open" data-id="${a.id}" class="panel-art" aria-label="View ${esc(a.title)}"><img src="${esc(a.imageUrl)}" alt="${esc(a.title)}" fetchpriority="high"><span class="panel-art-overlay"><span class="panel-art-badge">Featured work</span><span class="panel-art-title">${esc(a.title)}</span></span></button>` : '';
   }
 
   markChip(cat) { document.querySelectorAll('#chips .chip').forEach(b => b.setAttribute('aria-pressed', b.dataset.id === cat)); }
@@ -73,7 +73,7 @@ export class RenderEngine {
 
   openLightbox(a, likes, liked) {
     this.zoom = 1;
-    $('#lbBody').innerHTML = `<div class="lb-stage"><img class="lb-bg" src="${esc(a.imageUrl)}" alt="" aria-hidden="true"><img id="lbImg" src="${esc(a.imageUrl)}" alt="${esc(a.title)}"></div>
+    $('#lbBody').innerHTML = `<div class="lb-stage"><img id="lbImg" src="${esc(a.imageUrl)}" alt="${esc(a.title)}"></div>
       <aside class="lb-side">
         <div class="flex items-start justify-between gap-3"><h2 class="text-2xl font-bold">${esc(a.title)}</h2><button class="btn" data-act="close" aria-label="Close">✕</button></div>
         <p class="mute">${esc(a.category)} · <span id="dims">loading size…</span></p>
