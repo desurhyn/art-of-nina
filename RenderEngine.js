@@ -50,8 +50,7 @@ export class RenderEngine {
   }
 
   renderHero(a) {
-    $('#hero').innerHTML = a ? `<button data-act="open" data-id="${a.id}" class="panel-art" aria-label="View ${esc(a.title)}"><img src="${esc(a.imageUrl)}" alt="${esc(a.title)}" fetchpriority="high"></button>
-      <p class="mute mt-3">Featured: ${esc(a.title)}</p>` : '';
+    $('#hero').innerHTML = a ? `<button data-act="open" data-id="${a.id}" class="panel-art" aria-label="View ${esc(a.title)}"><img src="${esc(a.imageUrl)}" alt="${esc(a.title)}" fetchpriority="high"><span class="panel-art-overlay"><span class="panel-art-badge">Featured work</span><span class="panel-art-title">${esc(a.title)}</span></span></button>` : '';
   }
 
   markChip(cat) { document.querySelectorAll('#chips .chip').forEach(b => b.setAttribute('aria-pressed', b.dataset.id === cat)); }
