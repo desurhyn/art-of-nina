@@ -1,6 +1,6 @@
 // Edit this file to change categories, prices and payment badges (Open/Closed: no core code changes needed).
 export const FIREBASE_CONFIG = { apiKey: 'AIzaSyC9tI_hjV4iwBF9a_rzLWb7y5sSaiTkU30', authDomain: 'art-of-nina.firebaseapp.com', projectId: 'art-of-nina', appId: '1:792474759145:web:ef14dd2df710ab13646578', storageBucket: 'art-of-nina.firebasestorage.app' };
-export const CATEGORIES = ['Anime Illustrations', 'Manhwa / Webtoon Art'];
+export const CATEGORIES = ['Anime Illustrations', 'Manhwa / Webtoon Art', 'Gaming Fanart'];
 export const COMMISSIONS = [
   { id: 'bust', name: 'Bust / Chibi', price: 800 },
   { id: 'half', name: 'Half-Body', price: 1500 },
