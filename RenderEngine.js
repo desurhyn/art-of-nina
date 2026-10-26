@@ -30,6 +30,7 @@ export class RenderEngine {
         if (act === 'theme') return this.setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
         if (act === 'zoom') return this.setZoom(id === '0' ? 1 : this.zoom + Number(id));
         if (act === 'close') return el.closest('dialog').close();
+        if (act === 'tab') return this.setTab(id);
         h[act]?.(id, el);
       }
       if (e.target instanceof HTMLDialogElement) e.target.close();
@@ -37,11 +38,20 @@ export class RenderEngine {
     $('#q').addEventListener('input', e => h.search(e.target.value));
     $('#sort').addEventListener('change', e => h.sort(e.target.value));
     $('#lightbox').addEventListener('close', () => h.closed());
+    // Keyboard support for the admin tablist (arrow keys, Home, End)
+    $('#adminPane [role=tablist]').addEventListener('keydown', e => {
+      const tabs = [...e.currentTarget.querySelectorAll('[role=tab]')], i = tabs.indexOf(document.activeElement);
+      if (i < 0) return;
+      const n = { ArrowRight: (i + 1) % tabs.length, ArrowLeft: (i - 1 + tabs.length) % tabs.length, Home: 0, End: tabs.length - 1 }[e.key];
+      if (n == null) return;
+      e.preventDefault(); this.setTab(tabs[n].dataset.id); tabs[n].focus();
+    });
     $('#calcForm').addEventListener('input', () => this.calc());
     const form = (id, fn) => $(id).addEventListener('submit', e => { e.preventDefault(); fn(Object.fromEntries(new FormData(e.target)), e.target); });
     form('#loginForm', d => h.login(d));
     form('#catForm', (d, f) => h.addCategory(d.name, f));
     form('#infoForm', d => h.saveInfo(d));
+    this.setTab('art');
     form('#artForm', (d, f) => h.save({ ...d, featured: f.elements.featured.checked }));
   }
 
@@ -54,12 +64,25 @@ export class RenderEngine {
     $('#hero').innerHTML = a ? `<button data-act="open" data-id="${a.id}" class="panel-art" aria-label="View ${esc(a.title)}"><img src="${esc(a.imageUrl)}" alt="${esc(a.title)}" fetchpriority="high"><span class="panel-art-overlay"><span class="panel-art-badge">Featured work</span><span class="panel-art-title">${esc(a.title)}</span></span></button>` : '';
   }
 
+  setTab(id) {
+    document.querySelectorAll('#adminPane [role=tab]').forEach(t => { const on = t.dataset.id === id; t.setAttribute('aria-selected', on); t.tabIndex = on ? 0 : -1; });
+    document.querySelectorAll('#adminPane [role=tabpanel]').forEach(p => { p.hidden = p.id !== 'pane-' + id; });
+  }
+
+  // Updates the public filter chips AND the artwork form dropdown, so a new or deleted category shows up everywhere at once.
   setCategories(list) {
     this.categories = list;
     const cur = this.activeCat || 'All', sel = $('#artCat'), v = sel.value;
     $('#chips').innerHTML = ['All', ...list].map(x => `<button class="chip" data-act="cat" data-id="${esc(x)}" aria-pressed="${x === cur}">${esc(x)}</button>`).join('');
     sel.innerHTML = list.map(x => `<option>${esc(x)}</option>`).join('');
     if (list.includes(v)) sel.value = v;
+  }
+  // counts: { categoryName: numberOfArtworks }. The default category has no delete button.
+  renderCategoryAdmin(list, counts, def) {
+    $('#catList').innerHTML = list.map(c => {
+      const n = counts[c] || 0, isDef = c === def;
+      return `<li class="adm-row"><div class="grow"><b class="truncate block">${esc(c)}</b><span class="mute">${n} artwork${n === 1 ? '' : 's'}${isDef ? ' · default (cannot be deleted)' : ''}</span></div>${isDef ? '<span class="pill">Default</span>' : `<button class="btn danger" data-act="delCat" data-id="${esc(c)}" aria-label="Delete category ${esc(c)}">Delete</button>`}</li>`;
+    }).join('');
   }
   renderInfo(info) {
     if (info?.about) $('#aboutText').textContent = info.about;
@@ -120,7 +143,9 @@ export class RenderEngine {
   openAdmin() { $('#adminDlg').showModal(); }
   closeAdmin() { $('#adminDlg').close(); }
   renderAdminList(list) {
-    $('#adminList').innerHTML = list.map(a => `<li class="flex items-center gap-2 justify-between"><span class="truncate">${esc(a.title)}</span><span class="flex gap-2"><button class="btn" data-act="edit" data-id="${a.id}">Edit</button><button class="btn" data-act="remove" data-id="${a.id}">Delete</button></span></li>`).join('');
+    $('#artCount').textContent = `(${list.length})`;
+    $('#adminList').innerHTML = list.length ? list.map(a => `<li class="adm-row"><img src="${esc(a.imageUrl)}" alt="" loading="lazy"><div class="grow"><b class="truncate block">${esc(a.title)}</b><span class="mute truncate block">${esc(a.category)}</span></div><span class="flex gap-2 flex-wrap justify-end"><button class="btn" data-act="feature" data-id="${a.id}" aria-pressed="${!!a.featured}" title="Toggle Featured Work" aria-label="Toggle featured: ${esc(a.title)}">★<span class="only-md"> Featured</span></button><button class="btn" data-act="edit" data-id="${a.id}">Edit</button><button class="btn danger" data-act="remove" data-id="${a.id}">Delete</button></span></li>`).join('')
+      : '<li class="mute">No artworks yet. Upload your first one above.</li>';
   }
   setSaving(on, pct) {
     const b = $('#saveBtn'); b.disabled = on;
@@ -129,7 +154,12 @@ export class RenderEngine {
   fillForm(a) {
     const e = $('#artForm').elements; // form.id / form.title would return the form's own attributes, so use elements
     e.id.value = a?.id || ''; e.title.value = a?.title || ''; e.imageUrl.value = a?.imageUrl || '';
-    e.category.value = a?.category || this.categories[0]; e.tags.value = (a?.tags || []).join(', ');
+    const cat = a?.category || this.categories[0], sel = $('#artCat');
+    if (!this.categories.includes(cat)) sel.insertAdjacentHTML('afterbegin', `<option>${esc(cat)}</option>`); // legacy category: keep it selectable instead of silently changing it
+    e.category.value = cat;
+    $('#editBanner').hidden = !a; $('#editBanner').textContent = a ? `Editing “${a.title}”. Choosing a new image replaces the current one.` : '';
+    if (a) $('#artForm').scrollIntoView({ block: 'start' });
+    e.tags.value = (a?.tags || []).join(', ');
     e.description.value = a?.description || ''; e.featured.checked = !!a?.featured; e.file.value = '';
   }
 

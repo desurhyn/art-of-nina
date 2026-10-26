@@ -15,6 +15,8 @@ export class DatabaseAdapter {
   subscribeSettings(id, cb) { throw new Error('Not implemented'); }
   saveSettings(id, data) { throw new Error('Not implemented'); }
   uploadImage(file, onProgress) { throw new Error('Not implemented'); }
+  // Moves every artwork in `name` to `fallback`, THEN saves the new category list. Artworks are never left pointing at a missing category.
+  deleteCategory(name, fallback, newList) { throw new Error('Not implemented'); }
 }
 
 const V = 'https://www.gstatic.com/firebasejs/10.12.2/';
@@ -91,6 +93,17 @@ class FirebaseAdapter extends DatabaseAdapter {
   deleteComment(id) { const f = this.fs; return f.deleteDoc(f.doc(this.db, 'comments', id)); }
   subscribeSettings(id, cb) { const f = this.fs; return f.onSnapshot(f.doc(this.db, 'settings', id), s => cb(s.exists() ? s.data() : null), e => console.error(e)); }
   saveSettings(id, data) { const f = this.fs; return f.setDoc(f.doc(this.db, 'settings', id), data, { merge: true }); }
+  // Reassign first, remove from the list last: if anything fails midway the category still exists and nothing is orphaned. Safe to retry.
+  async deleteCategory(name, fallback, newList) {
+    const f = this.fs, snap = await f.getDocs(f.query(f.collection(this.db, 'artworks'), f.where('category', '==', name)));
+    for (let i = 0; i < snap.docs.length; i += 400) { // Firestore batches are capped at 500 writes
+      const b = f.writeBatch(this.db);
+      snap.docs.slice(i, i + 400).forEach(d => b.update(d.ref, { category: fallback }));
+      await b.commit();
+    }
+    await this.saveSettings('categories', { list: newList });
+    return snap.size;
+  }
   // Uploads the ORIGINAL bytes (no resizing or compression). Uses Cloudinary when configured, else Firebase Storage.
   async uploadImage(file, onProgress) {
     const f = normalizeImage(file);
@@ -148,6 +161,11 @@ class MemoryAdapter extends DatabaseAdapter {
   async addComment(c) { this.comments.push({ ...c, id: 'c' + ++this.n, timestamp: Date.now() }); this._emit(); }
   subscribeSettings(id, cb) { return this._sub(() => this.settings[id] || null, cb); }
   async saveSettings(id, data) { this.settings[id] = { ...this.settings[id], ...data }; this._emit(); }
+  async deleteCategory(name, fallback, newList) {
+    const n = this.art.filter(x => x.category === name).length;
+    this.art = this.art.map(x => x.category === name ? { ...x, category: fallback } : x);
+    await this.saveSettings('categories', { list: newList }); return n;
+  }
   async deleteComment(id) { this.comments = this.comments.filter(c => c.id !== id); this._emit(); }
   async uploadImage(file) { return URL.createObjectURL(file); } // demo only: not saved
   onAuthChange(cb) { cb(null); return () => {}; }
