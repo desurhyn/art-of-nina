@@ -7,7 +7,7 @@ import { RenderEngine } from './RenderEngine.js';
 const db = await createAdapter(C.FIREBASE_CONFIG, C.CLOUDINARY);
 const auth = new AuthService(db);
 const gallery = new GalleryService(C.PAGE_SIZE);
-let liked = new Set(), openId = null, unsubC = null, commentsCache = [];
+let liked = new Set(), openId = null, unsubC = null, commentsCache = [], categories = [...C.CATEGORIES];
 try { liked = new Set(JSON.parse(localStorage.getItem('nina_liked') || '[]')); } catch {}
 const saveLiked = () => { try { localStorage.setItem('nina_liked', JSON.stringify([...liked])); } catch {} };
 
@@ -53,9 +53,17 @@ const ui = new RenderEngine(C, {
       ui.fillForm(null); ui.toast('Saved.');
     } catch (e) { fail(e); } finally { ui.setSaving(false); }
   },
+  addCategory: (name, form) => {
+    name = name.trim();
+    if (categories.some(c => c.toLowerCase() === name.toLowerCase())) return ui.toast('That category already exists.');
+    db.saveSettings('categories', { list: [...categories, name] }).then(() => { form.reset(); ui.toast('Category added.'); }).catch(fail);
+  },
+  saveInfo: d => db.saveSettings('site_info', { about: d.about.trim(), how: d.how.trim() }).then(() => ui.toast('Site text saved.')).catch(fail),
   copy: () => ui.copySummary()
 });
 
 auth.onChange(u => { ui.renderAuth(u); ui.setAdminEmail(u?.email); if (openId) ui.renderComments(commentsCache, auth.isAdmin); });
 db.subscribeArtworks(list => { gallery.setArtworks(list); ui.renderHero(gallery.hero); ui.renderAdminList(list); refresh(); });
 db.subscribeLikes(l => { gallery.setLikes(l); ui.updateLikes(l, liked); if (gallery.sort === 'liked') refresh(); });
+db.subscribeSettings('categories', s => { categories = s?.list?.length ? s.list : [...C.CATEGORIES]; ui.setCategories(categories); });
+db.subscribeSettings('site_info', s => { ui.renderInfo(s); ui.fillInfoForm(s); });

@@ -14,8 +14,7 @@ export class RenderEngine {
 
   build() {
     const c = this.cfg;
-    $('#chips').innerHTML = ['All', ...c.CATEGORIES].map((x, i) => `<button class="chip" data-act="cat" data-id="${esc(x)}" aria-pressed="${i === 0}">${esc(x)}</button>`).join('');
-    $('#artCat').innerHTML = c.CATEGORIES.map(x => `<option>${esc(x)}</option>`).join('');
+    this.setCategories(c.CATEGORIES);
     $('#tiers').innerHTML = c.COMMISSIONS.map((t, i) => `<label class="tier"><input type="radio" name="tier" value="${t.id}" ${i ? '' : 'checked'}><span class="tname">${esc(t.name)}</span><span class="tprice">${php(t.price)}</span></label>`).join('');
     $('#addons').innerHTML = c.ADDONS.map(a => `<label class="addon"><input type="checkbox" name="addon" value="${a.id}"><span>${esc(a.name)}</span><span class="mute">+${php(a.price)}</span></label>`).join('');
     $('#pays').innerHTML = c.PAYMENTS.map(p => `<span class="badge">${esc(p)}</span>`).join('');
@@ -41,6 +40,8 @@ export class RenderEngine {
     $('#calcForm').addEventListener('input', () => this.calc());
     const form = (id, fn) => $(id).addEventListener('submit', e => { e.preventDefault(); fn(Object.fromEntries(new FormData(e.target)), e.target); });
     form('#loginForm', d => h.login(d));
+    form('#catForm', (d, f) => h.addCategory(d.name, f));
+    form('#infoForm', d => h.saveInfo(d));
     form('#artForm', (d, f) => h.save({ ...d, featured: f.elements.featured.checked }));
   }
 
@@ -53,7 +54,23 @@ export class RenderEngine {
     $('#hero').innerHTML = a ? `<button data-act="open" data-id="${a.id}" class="panel-art" aria-label="View ${esc(a.title)}"><img src="${esc(a.imageUrl)}" alt="${esc(a.title)}" fetchpriority="high"><span class="panel-art-overlay"><span class="panel-art-badge">Featured work</span><span class="panel-art-title">${esc(a.title)}</span></span></button>` : '';
   }
 
-  markChip(cat) { document.querySelectorAll('#chips .chip').forEach(b => b.setAttribute('aria-pressed', b.dataset.id === cat)); }
+  setCategories(list) {
+    this.categories = list;
+    const cur = this.activeCat || 'All', sel = $('#artCat'), v = sel.value;
+    $('#chips').innerHTML = ['All', ...list].map(x => `<button class="chip" data-act="cat" data-id="${esc(x)}" aria-pressed="${x === cur}">${esc(x)}</button>`).join('');
+    sel.innerHTML = list.map(x => `<option>${esc(x)}</option>`).join('');
+    if (list.includes(v)) sel.value = v;
+  }
+  renderInfo(info) {
+    if (info?.about) $('#aboutText').textContent = info.about;
+    if (info?.how) $('#howText').textContent = info.how;
+  }
+  fillInfoForm(info) {
+    const f = $('#infoForm').elements, norm = t => t.split('\n').map(s => s.trim()).join('\n').trim();
+    f.about.value = info?.about ?? norm($('#aboutText').textContent);
+    f.how.value = info?.how ?? norm($('#howText').textContent);
+  }
+  markChip(cat) { this.activeCat = cat; document.querySelectorAll('#chips .chip').forEach(b => b.setAttribute('aria-pressed', b.dataset.id === cat)); }
 
   renderGallery(list, hasMore, total, likes, liked) {
     $('#count').textContent = `${total} artwork${total === 1 ? '' : 's'}`;
@@ -112,7 +129,7 @@ export class RenderEngine {
   fillForm(a) {
     const e = $('#artForm').elements; // form.id / form.title would return the form's own attributes, so use elements
     e.id.value = a?.id || ''; e.title.value = a?.title || ''; e.imageUrl.value = a?.imageUrl || '';
-    e.category.value = a?.category || this.cfg.CATEGORIES[0]; e.tags.value = (a?.tags || []).join(', ');
+    e.category.value = a?.category || this.categories[0]; e.tags.value = (a?.tags || []).join(', ');
     e.description.value = a?.description || ''; e.featured.checked = !!a?.featured; e.file.value = '';
   }
 

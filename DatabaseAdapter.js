@@ -12,6 +12,8 @@ export class DatabaseAdapter {
   signIn(email, password) { throw new Error('Not implemented'); }
   signOut() { throw new Error('Not implemented'); }
   deleteComment(id) { throw new Error('Not implemented'); }
+  subscribeSettings(id, cb) { throw new Error('Not implemented'); }
+  saveSettings(id, data) { throw new Error('Not implemented'); }
   uploadImage(file, onProgress) { throw new Error('Not implemented'); }
 }
 
@@ -87,6 +89,8 @@ class FirebaseAdapter extends DatabaseAdapter {
   setLike(id, delta) { const f = this.fs; return f.setDoc(f.doc(this.db, 'likes', id), { count: f.increment(delta) }, { merge: true }); }
   addComment(c) { const f = this.fs; return f.addDoc(f.collection(this.db, 'comments'), { ...c, timestamp: f.serverTimestamp() }); }
   deleteComment(id) { const f = this.fs; return f.deleteDoc(f.doc(this.db, 'comments', id)); }
+  subscribeSettings(id, cb) { const f = this.fs; return f.onSnapshot(f.doc(this.db, 'settings', id), s => cb(s.exists() ? s.data() : null), e => console.error(e)); }
+  saveSettings(id, data) { const f = this.fs; return f.setDoc(f.doc(this.db, 'settings', id), data, { merge: true }); }
   // Uploads the ORIGINAL bytes (no resizing or compression). Uses Cloudinary when configured, else Firebase Storage.
   async uploadImage(file, onProgress) {
     const f = normalizeImage(file);
@@ -119,7 +123,7 @@ class FirebaseAdapter extends DatabaseAdapter {
 class MemoryAdapter extends DatabaseAdapter {
   constructor() {
     super();
-    this.subs = new Set(); this.likes = {}; this.comments = []; this.n = 0;
+    this.subs = new Set(); this.settings = {}; this.likes = {}; this.comments = []; this.n = 0;
     const cats = ['Anime Illustrations', 'Manhwa / Webtoon Art'];
     this.art = Array.from({ length: 8 }, (_, i) => ({
       id: 'demo' + i, title: 'Demo artwork ' + (i + 1), category: cats[i % 2], tags: ['demo', 'sample'],
@@ -142,6 +146,8 @@ class MemoryAdapter extends DatabaseAdapter {
   async deleteArtwork(id) { this.art = this.art.filter(x => x.id !== id); this._emit(); }
   async setLike(id, d) { this.likes[id] = Math.max(0, (this.likes[id] || 0) + d); this._emit(); }
   async addComment(c) { this.comments.push({ ...c, id: 'c' + ++this.n, timestamp: Date.now() }); this._emit(); }
+  subscribeSettings(id, cb) { return this._sub(() => this.settings[id] || null, cb); }
+  async saveSettings(id, data) { this.settings[id] = { ...this.settings[id], ...data }; this._emit(); }
   async deleteComment(id) { this.comments = this.comments.filter(c => c.id !== id); this._emit(); }
   async uploadImage(file) { return URL.createObjectURL(file); } // demo only: not saved
   onAuthChange(cb) { cb(null); return () => {}; }
