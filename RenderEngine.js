@@ -18,6 +18,7 @@ export class RenderEngine {
     $('#tiers').innerHTML = c.COMMISSIONS.map((t, i) => `<label class="tier"><input type="radio" name="tier" value="${t.id}" ${i ? '' : 'checked'}><span class="tname">${esc(t.name)}</span><span class="tprice">${php(t.price)}</span></label>`).join('');
     $('#addons').innerHTML = c.ADDONS.map(a => `<label class="addon"><input type="checkbox" name="addon" value="${a.id}"><span>${esc(a.name)}</span><span class="mute">+${php(a.price)}</span></label>`).join('');
     $('#pays').innerHTML = c.PAYMENTS.map(p => `<span class="badge">${esc(p)}</span>`).join('');
+    this.renderTools(c.TOOLS);
     this.calc();
   }
 
@@ -51,6 +52,13 @@ export class RenderEngine {
     form('#loginForm', d => h.login(d));
     form('#catForm', (d, f) => h.addCategory(d.name, f));
     form('#infoForm', d => h.saveInfo(d));
+    form('#toolForm', (d, f) => h.addTool(d.name, f));
+    // Enter saves and Escape cancels while a tool badge is being edited
+    $('#toolList').addEventListener('keydown', e => {
+      if (!e.target.matches('[data-tool-input]')) return;
+      if (e.key === 'Enter') { e.preventDefault(); e.target.closest('li').querySelector('[data-act=toolSave]').click(); }
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); h.toolCancel(); }
+    });
     this.setTab('art');
     form('#artForm', (d, f) => h.save({ ...d, featured: f.elements.featured.checked }));
   }
@@ -83,6 +91,16 @@ export class RenderEngine {
       const n = counts[c] || 0, isDef = c === def;
       return `<li class="adm-row"><div class="grow"><b class="truncate block">${esc(c)}</b><span class="mute">${n} artwork${n === 1 ? '' : 's'}${isDef ? ' · default (cannot be deleted)' : ''}</span></div>${isDef ? '<span class="pill">Default</span>' : `<button class="btn danger" data-act="delCat" data-id="${esc(c)}" aria-label="Delete category ${esc(c)}">Delete</button>`}</li>`;
     }).join('');
+  }
+  // Public "How I Create" badges
+  renderTools(list) { $('#toolBadges').innerHTML = list.map(t => `<span class="badge">${esc(t)}</span>`).join(''); }
+  // Admin list. `editing` is the index of the row currently being edited (or -1): that row shows an input with Save / Cancel.
+  renderToolsAdmin(list, editing = -1) {
+    $('#toolList').innerHTML = list.length ? list.map((t, i) => i === editing
+      ? `<li class="adm-row"><input class="grow" data-tool-input value="${esc(t)}" maxlength="40" aria-label="Edit tool name"><button class="btn primary" data-act="toolSave" data-id="${i}">Save</button><button class="btn" data-act="toolCancel">Cancel</button></li>`
+      : `<li class="adm-row"><span class="grow truncate">${esc(t)}</span><button class="btn" data-act="toolEdit" data-id="${i}" aria-label="Edit ${esc(t)}">Edit</button><button class="btn danger" data-act="toolDel" data-id="${i}" aria-label="Delete ${esc(t)}">Delete</button></li>`).join('')
+      : '<li class="mute">No badges yet. Add your first tool above.</li>';
+    $('#toolList [data-tool-input]')?.focus();
   }
   renderInfo(info) {
     if (info?.about) $('#aboutText').textContent = info.about;

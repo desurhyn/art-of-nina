@@ -3,6 +3,8 @@ export const FIREBASE_CONFIG = { apiKey: 'AIzaSyC9tI_hjV4iwBF9a_rzLWb7y5sSaiTkU3
 export const CATEGORIES = ['Anime Illustrations', 'Manhwa / Webtoon Art', 'Gaming Fanart'];
 // Fallback for artworks whose category gets deleted. It can never be deleted itself, so artworks always have a valid home.
 export const DEFAULT_CATEGORY = CATEGORIES[0];
+// Starting "How I Create" badges, used until you save your own list in Admin > Creation Tools.
+export const TOOLS = ['ibisPaint X', 'Smartphone / Mobile'];
 export const COMMISSIONS = [
   { id: 'bust', name: 'Bust / Chibi', price: 800 },
   { id: 'half', name: 'Half-Body', price: 1500 },

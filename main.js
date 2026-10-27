@@ -18,7 +18,11 @@ const fail = e => ui.toast(e?.code === 'permission-denied' || e?.code === 'stora
 const refresh = () => ui.renderGallery(gallery.visible, gallery.hasMore, gallery.filtered.length, gallery.likes, liked);
 // Frontend admin check for every write. This is a convenience only: the real enforcement is firestore.rules / storage.rules (request.auth != null).
 const admin = fn => (...a) => auth.isAdmin ? fn(...a) : fail({ code: 'permission-denied' });
-const catCounts = () => gallery.all.reduce((m, a) => (m[a.category] = (m[a.category] || 0) + 1, m), {});
+let tools = [...C.TOOLS], editingTool = -1;
+const syncTools = () => { ui.renderTools(tools); ui.renderToolsAdmin(tools, editingTool); };
+const cleanTool = s => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, 40);
+const saveTools = (list, msg) => db.saveSettings('process_tools', { list }).then(() => ui.toast(msg)).catch(fail);
+const catCounts =() => gallery.all.reduce((m, a) => (m[a.category] = (m[a.category] || 0) + 1, m), {});
 const syncCats = () => ui.renderCategoryAdmin(categories, catCounts(), DEF);
 
 const ui = new RenderEngine(C, {
@@ -80,6 +84,27 @@ const ui = new RenderEngine(C, {
     db.deleteCategory(name, DEF, categories.filter(c => c !== name))
       .then(moved => ui.toast(moved ? `Category deleted. ${moved} artwork${moved === 1 ? '' : 's'} moved to ${DEF}.` : 'Category deleted.')).catch(fail);
   }),
+  addTool: admin((name, form) => {
+    name = cleanTool(name);
+    if (!name) return ui.toast('Type a tool name first.');
+    if (tools.length >= 20) return ui.toast('Maximum of 20 badges. Delete one first.');
+    if (tools.some(t => t.toLowerCase() === name.toLowerCase())) return ui.toast('That badge already exists.');
+    saveTools([...tools, name], 'Badge added.').then(() => form.reset());
+  }),
+  toolEdit: id => { editingTool = Number(id); ui.renderToolsAdmin(tools, editingTool); },
+  toolCancel: () => { editingTool = -1; ui.renderToolsAdmin(tools); },
+  toolSave: admin((id, el) => {
+    const i = Number(id), name = cleanTool(el.closest('li').querySelector('[data-tool-input]').value);
+    if (!name) return ui.toast('A badge cannot be empty. Use Delete to remove it.');
+    if (tools.some((t, j) => j !== i && t.toLowerCase() === name.toLowerCase())) return ui.toast('That badge already exists.');
+    editingTool = -1;
+    saveTools(tools.map((t, j) => j === i ? name : t), 'Badge updated.');
+  }),
+  toolDel: admin(id => {
+    const i = Number(id); if (!confirm(`Delete the badge "${tools[i]}"?`)) return;
+    editingTool = -1;
+    saveTools(tools.filter((_, j) => j !== i), 'Badge deleted.');
+  }),
   saveInfo: admin(d => {
     const about = d.about.trim(), how = d.how.trim();
     if (about.length > 3000 || how.length > 1500) return ui.toast('That text is too long. Please shorten it.');
@@ -97,4 +122,6 @@ db.subscribeSettings('categories', s => {
   if (gallery.cat !== 'All' && !categories.includes(gallery.cat)) { gallery.setCategory('All'); ui.markChip('All'); } // the filter in use was just deleted
   refresh();
 });
+// A saved list wins even when empty (so deleting every badge really clears them); no saved doc means the defaults from config.js.
+db.subscribeSettings('process_tools', s => { tools = Array.isArray(s?.list) ? s.list.map(cleanTool).filter(Boolean) : [...C.TOOLS]; if (editingTool >= tools.length) editingTool = -1; syncTools(); });
 db.subscribeSettings('site_info', s => { ui.renderInfo(s); ui.fillInfoForm(s); });

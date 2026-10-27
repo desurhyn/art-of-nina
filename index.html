@@ -127,7 +127,7 @@ Every piece starts as a rough thumbnail sketch. From there I move on to clean li
   </div>
   <div class="panel"><h3 class="text-xl font-bold mb-3">How I Create</h3>
     <p id="howText" class="mb-3 whitespace-pre-line">I create my artwork using ibisPaint X on my smartphone / mobile phone.</p>
-    <div class="flex flex-wrap gap-2"><span class="badge">ibisPaint X</span><span class="badge">Smartphone / Mobile</span></div></div>
+    <div id="toolBadges" class="flex flex-wrap gap-2"></div></div>
 </section>
 </main>
 
@@ -144,7 +144,8 @@ Every piece starts as a rough thumbnail sketch. From there I move on to clean li
     <div class="adm-tabs" role="tablist" aria-label="Admin sections">
       <button class="adm-tab" role="tab" id="tab-art" aria-controls="pane-art" aria-selected="true" data-act="tab" data-id="art">Artworks</button>
       <button class="adm-tab" role="tab" id="tab-cat" aria-controls="pane-cat" aria-selected="false" tabindex="-1" data-act="tab" data-id="cat">Categories</button>
-      <button class="adm-tab" role="tab" id="tab-info" aria-controls="pane-info" aria-selected="false" tabindex="-1" data-act="tab" data-id="info">Site Content</button>
+      <button class="adm-tab" role="tab" id="tab-tools" aria-controls="pane-tools" aria-selected="false" tabindex="-1" data-act="tab" data-id="tools">Creation Tools</button>
+      <button class="adm-tab" role="tab" id="tab-info" aria-controls="pane-info" aria-selected="false" tabindex="-1" data-act="tab" data-id="info">Site Info</button>
     </div>
 
     <!-- Tab 1: Artworks -->
@@ -155,7 +156,7 @@ Every piece starts as a rough thumbnail sketch. From there I move on to clean li
         <input type="hidden" name="id"><input name="title" placeholder="Title" maxlength="120" required aria-label="Title">
         <label class="mute" for="artFile">Upload an image from this device (original quality, never resized or compressed)</label><input id="artFile" type="file" name="file" accept="image/*"><input name="imageUrl" placeholder="Or paste an image link (optional)" aria-label="Image link">
         <label class="mute" for="artCat">Category</label><select name="category" id="artCat"></select><input name="tags" placeholder="Tags, separated by commas" aria-label="Tags"><textarea name="description" rows="3" maxlength="1000" placeholder="Description" aria-label="Description"></textarea>
-        <label class="flex gap-2 items-center"><input type="checkbox" name="featured" style="width:auto;min-height:0"> Feature on the home hero</label>
+        <label class="flex gap-2 items-center"><input type="checkbox" name="featured" style="width:auto;min-height:0"> Featured Work</label>
         <div class="flex gap-2"><button id="saveBtn" class="btn primary">Save artwork</button><button type="button" class="btn" data-act="clear">New</button></div>
       </form>
       <div class="adm-sec grid gap-2"><h3 class="font-bold text-lg">All artworks <span id="artCount" class="mute"></span></h3><ul id="adminList" class="grid gap-2"></ul></div>
@@ -167,13 +168,19 @@ Every piece starts as a rough thumbnail sketch. From there I move on to clean li
       <div class="adm-sec grid gap-2"><h3 class="font-bold text-lg">Existing categories</h3><p class="mute">Deleting a category moves its artworks to the default category. Nothing is lost.</p><ul id="catList" class="grid gap-2"></ul></div>
     </section>
 
-    <!-- Tab 3: Site content -->
+    <!-- Tab 3: Creation tools (the badges under "How I Create") -->
+    <section id="pane-tools" role="tabpanel" aria-labelledby="tab-tools" class="grid gap-4" hidden>
+      <form id="toolForm" class="adm-sec"><h3 class="font-bold text-lg">Add a tool or process badge</h3><input name="name" maxlength="40" placeholder="e.g. Stylus, Procreate, iPad" aria-label="New tool name" required><button class="btn primary">Add tool</button></form>
+      <div class="adm-sec grid gap-2"><h3 class="font-bold text-lg">Current badges</h3><p class="mute">These appear under "How I Create" on the homepage.</p><ul id="toolList" class="grid gap-2"></ul></div>
+    </section>
+
+    <!-- Tab 4: Site info -->
     <section id="pane-info" role="tabpanel" aria-labelledby="tab-info" class="grid gap-4" hidden>
-      <form id="infoForm" class="adm-sec"><h3 class="font-bold text-lg">Homepage text</h3>
+      <form id="infoForm" class="adm-sec"><h3 class="font-bold text-lg">About Me &amp; How I Create text</h3>
         <label class="mute" for="infoAbout">About Me</label><textarea id="infoAbout" name="about" rows="7" maxlength="3000"></textarea>
         <label class="mute" for="infoHow">How I Create</label><textarea id="infoHow" name="how" rows="5" maxlength="1500"></textarea>
         <p class="mute">Line breaks are kept. Leave a box empty to show the built-in default text.</p>
-        <button class="btn primary">Save site content</button></form>
+        <button class="btn primary">Save site info</button></form>
     </section>
   </div>
   </div>
